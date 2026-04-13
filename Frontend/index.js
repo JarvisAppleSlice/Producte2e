@@ -18,13 +18,13 @@ form.addEventListener("submit", async (e) => {
 	const body = {
 		Name: formData.get("name"),
 		Price: formData.get("price"),
-		Quantity: formData.get("inventoryCount"),
+		inventoryCount: formData.get("inventoryCount"),
 	};
 	console.log("formData");
 	console.log(formData.get("name"));
 	console.log(formData.get("price"));
 	console.log(formData.get("inventoryCount"));
-	await fetch("http://localhost:5105/products", {
+	await fetch("http://localhost:5168/products", {
 		method: "post",
 		headers: {
 			"Content-Type": "application/json",
