@@ -8,7 +8,9 @@
 	"main": "index.js",
 	"scripts": {
 		"dev": "npx vite --host",
-		"test": "test"
+		"test": "test",
+		"build": "vite build",
+		"preview": "vite preview"
 	},
 	"devDependencies": {
 		"cypress": "^15.13.1",
