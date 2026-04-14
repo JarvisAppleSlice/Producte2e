@@ -13,6 +13,7 @@
 		"preview": "vite preview"
 	},
 	"devDependencies": {
+		"@faker-js/faker": "^10.4.0",
 		"cypress": "^15.13.1",
 		"vite": "^8.0.7"
 	}
