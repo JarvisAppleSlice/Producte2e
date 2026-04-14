@@ -29,7 +29,10 @@ describe("products", () => {
 
 		cy.get('ul[name="products_list"] li:last')
 			.should("be.visible")
-			.and("have.text", `Name: ${name}, Price: ${price}, Inventory: ${inventoryCount}`);
+			.and(
+				"have.text",
+				`Name: ${name}, Price: $${Number(price).toFixed(2)}, Inventory: ${inventoryCount}`,
+			);
 
 		cy.url("eq", "http://localhost:5173");
 	});
