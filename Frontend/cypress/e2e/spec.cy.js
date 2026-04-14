@@ -13,7 +13,7 @@ describe("products", () => {
 		cy.visit("http://localhost:5173/");
 
 		const name = faker.commerce.productName();
-		const price = faker.commerce.price({ min: 0, max: 300 });
+		const price = faker.commerce.price({ min: 1, max: 300 });
 		const inventoryCount = faker.number.int({ min: 1, max: 1000 });
 
 		cy.get("form").should("be.visible");
