@@ -34,6 +34,36 @@ describe("products", () => {
 				`Name: ${name}, Price: $${Number(price).toFixed(2)}, Inventory: ${inventoryCount}`,
 			);
 
-		cy.url("eq", "http://localhost:5173");
+		cy.url("eq", "http://localhost:5173/");
+	});
+	it("registers a new user successfully", () => {
+		cy.visit("http://localhost:5173/registration.html");
+
+		cy.get("#email").should("be.visible").and("have.attr", "required");
+		cy.get("#password").should("be.visible").and("have.attr", "required");
+
+		cy.get("#email").type("test@test.com");
+		cy.get("#password").type("password123");
+
+		cy.get("#user_registration").submit();
+
+		cy.contains("Account created").should("be.visible");
+	});
+	it("shows error for duplicate email", () => {
+		cy.visit("http://localhost:5173/registration.html");
+
+		const email = "duplicate@test.com";
+
+		cy.get("#email").type(email);
+		cy.get("#password").type("password123");
+		cy.get("#user_registration").submit();
+
+		cy.visit("http://localhost:5173/registration.html");
+
+		cy.get("#email").type(email);
+		cy.get("#password").type("password123");
+		cy.get("#user_registration").submit();
+
+		cy.contains("Email already exists").should("be.visible");
 	});
 });

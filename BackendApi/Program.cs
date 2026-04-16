@@ -1,4 +1,14 @@
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
+
+string HashPassword(string password)
+{
+    using var sha256 = SHA256.Create();
+    var bytes = Encoding.UTF8.GetBytes(password);
+    var hash = sha256.ComputeHash(bytes);
+    return Convert.ToBase64String(hash);
+}
 
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 var builder = WebApplication.CreateBuilder(args);
@@ -9,7 +19,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy(name: MyAllowSpecificOrigins,
                       policy =>
                       {
-                          policy.WithOrigins("http://localhost:5173").AllowAnyMethod().AllowAnyHeader();
+                          // "http://127.0.0.1:3000"
+                          policy.WithOrigins("http://localhost:5173")
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
                       });
 });
 var app = builder.Build();
@@ -29,6 +42,28 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 }
+
+app.MapPost("/register", async (ProductDb db, User user) =>
+{
+    if (string.IsNullOrWhiteSpace(user.Email) ||
+        string.IsNullOrWhiteSpace(user.PasswordHash))
+    {
+        return Results.BadRequest("Email and password are required");
+    }
+
+    if (db.Users.Any(u => u.Email == user.Email))
+    {
+        return Results.BadRequest("Email already exists");
+    }
+
+    var plainPassword = user.PasswordHash;
+    user.PasswordHash = HashPassword(plainPassword);
+
+    db.Users.Add(user);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { user.Id, user.Email });
+});
 
 app.MapGet("/products", async (ProductDb db) =>
     await db.Products.ToListAsync());
