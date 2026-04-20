@@ -20,7 +20,7 @@ describe("products", () => {
 		const price = faker.commerce.price({ min: 1, max: 300 });
 		const inventoryCount = faker.number.int({ min: 1, max: 1000 });
 
-		// simulate logged-in user (avoids login UI flakiness)
+		// simulate logged-in user
 		cy.visit("http://localhost:5173/", {
 			onBeforeLoad(win) {
 				win.localStorage.setItem(
