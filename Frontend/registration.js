@@ -30,6 +30,9 @@ if (form) {
 				const data = await response.json();
 				message.innerText = "Account created";
 				console.log("User created:", data);
+				setTimeout(() => {
+					window.location.href = "index.html";
+				}, 800);
 			} else {
 				message.innerText = await response.text();
 			}
