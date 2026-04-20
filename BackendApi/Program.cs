@@ -19,8 +19,13 @@ builder.Services.AddCors(options =>
     options.AddPolicy(name: MyAllowSpecificOrigins,
                       policy =>
                       {
-                          // "http://127.0.0.1:3000"
-                          policy.WithOrigins("http://localhost:5173")
+
+                          policy.WithOrigins(
+                            "http://localhost:5173"
+                             // "http://127.0.0.1:5173",
+                             // "http://localhost:3000",
+                             // "http://127.0.0.1:3000"
+                             )
                           .AllowAnyMethod()
                           .AllowAnyHeader();
                       });
@@ -38,9 +43,18 @@ using (var scope = app.Services.CreateScope())
             new Product { Id = 2, Name = "Mouse", Price = 25.50m, InventoryCount = 50 },
             new Product { Id = 3, Name = "Keyboard", Price = 75.00m, InventoryCount = 30 }
         );
-
-        db.SaveChanges();
     }
+
+    if (!db.Users.Any())
+    {
+        db.Users.Add(new User
+        {
+            Email = "test@test.com",
+            PasswordHash = HashPassword("password123")
+        });
+    }
+
+    db.SaveChanges();
 }
 
 app.MapPost("/register", async (ProductDb db, User user) =>
@@ -61,6 +75,21 @@ app.MapPost("/register", async (ProductDb db, User user) =>
 
     db.Users.Add(user);
     await db.SaveChangesAsync();
+
+    return Results.Ok(new { user.Id, user.Email });
+});
+
+app.MapPost("/login", async (ProductDb db, User login) =>
+{
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Email == login.Email);
+
+    if (user == null)
+        return Results.BadRequest("Invalid Email or Password");
+
+    var hashed = HashPassword(login.PasswordHash);
+
+    if (user.PasswordHash != hashed)
+        return Results.BadRequest("Invalid Email or Password");
 
     return Results.Ok(new { user.Id, user.Email });
 });

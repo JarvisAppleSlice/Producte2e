@@ -5,11 +5,14 @@ if (form) {
 		e.preventDefault();
 
 		const email = document.getElementById("email").value;
+
 		const password = document.getElementById("password").value;
 
-		const message = document.createElement("p");
-		message.id = "register_message";
-		document.body.appendChild(message);
+		const message = document.getElementById("register_message");
+
+		if (!message) return;
+
+		message.innerText = "";
 
 		try {
 			const response = await fetch("http://localhost:5168/register", {
@@ -27,9 +30,11 @@ if (form) {
 				const data = await response.json();
 				message.innerText = "Account created";
 				console.log("User created:", data);
+				setTimeout(() => {
+					window.location.href = "index.html";
+				}, 800);
 			} else {
-				const errorText = await response.text();
-				message.innerText = errorText;
+				message.innerText = await response.text();
 			}
 		} catch (err) {
 			message.innerText = "Server error";
