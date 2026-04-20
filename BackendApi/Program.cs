@@ -65,6 +65,22 @@ app.MapPost("/register", async (ProductDb db, User user) =>
     return Results.Ok(new { user.Id, user.Email });
 });
 
+app.MapPost("/login", async (ProductDb db, User login) =>
+{
+    var user = await db.Users
+        .FirstOrDefaultAsync(u => u.Email == login.Email);
+
+    if (user == null)
+        return Results.BadRequest("Invaliid Email or Password");
+
+    var hashed = HashPassword(login.PasswordHash);
+
+    if (user.PasswordHash != hashed)
+        return Results.BadRequest("Invaliid Email or Password");
+
+    return Results.Ok(new { user.Id, user.Email });
+});
+
 app.MapGet("/products", async (ProductDb db) =>
     await db.Products.ToListAsync());
 
