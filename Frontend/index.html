@@ -4,26 +4,29 @@
 		<title>Products page</title>
 		<script src="index.js" type="module"></script>
 	</head>
-	<section>
-		<button>
-			<a href="registration.html">Register</a>
-			<button id="logout_btn" style="display: none">Logout</button>
-		</button>
-		<button>
-			<a href="login.html">Login</a>
-		</button>
-	</section>
+
 	<body>
 		<h2 id="welcome_message"></h2>
+
+		<div id="receipt"></div>
+
+		<section>
+			<button><a href="registration.html">Register</a></button>
+			<button><a href="login.html">Login</a></button>
+			<button id="logout_btn" style="display: none">Logout</button>
+		</section>
+
 		<h1>Products:</h1>
 		<ul name="products_list"></ul>
 
 		<form name="product_creation">
-			<label for="name">Name:</label>
+			<label>Name:</label>
 			<input name="name" type="text" />
-			<label for="price">Price:</label>
+
+			<label>Price:</label>
 			<input name="price" type="number" step=".01" />
-			<label for="inventoryCount">Inventory:</label>
+
+			<label>Inventory:</label>
 			<input name="inventoryCount" type="number" />
 
 			<button type="submit">Create Product</button>

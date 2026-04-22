@@ -21,10 +21,10 @@ builder.Services.AddCors(options =>
                       {
 
                           policy.WithOrigins(
-                            "http://localhost:5173"
-                             // "http://127.0.0.1:5173",
-                             // "http://localhost:3000",
-                             // "http://127.0.0.1:3000"
+                            "http://localhost:5173",
+                             "http://127.0.0.1:5173",
+                             "http://localhost:3000",
+                             "http://127.0.0.1:3000"
                              )
                           .AllowAnyMethod()
                           .AllowAnyHeader();
@@ -103,6 +103,32 @@ app.MapPost("/products", async (Product product, ProductDb db) =>
     await db.SaveChangesAsync();
 
     return Results.Created($"/products/{product.Id}", product);
+});
+
+app.MapPost("/purchase", async (ProductDb db, PurchaseRequest request) =>
+{
+    if (request.ProductId <= 0)
+        return Results.BadRequest("Invalid request");
+
+    var product = await db.Products.FindAsync(request.ProductId);
+
+    if (product == null)
+        return Results.BadRequest("Product not found");
+
+    if (product.InventoryCount <= 0)
+        return Results.BadRequest("Out of stock");
+
+    product.InventoryCount -= 1;
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        product.Id,
+        product.Name,
+        product.Price,
+        RemainingInventory = product.InventoryCount
+    });
 });
 
 app.UseCors(MyAllowSpecificOrigins);
