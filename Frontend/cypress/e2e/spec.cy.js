@@ -215,4 +215,67 @@ describe("products", () => {
 
 		cy.get("#receipt").should("contain.text", "Item:").and("contain.text", "Price:");
 	});
+
+	it("allows valid purchase", () => {
+		login();
+
+		cy.request("POST", "http://localhost:5168/purchase", {
+			productId: 1,
+			quantity: 2,
+			userId: 1,
+		})
+			.its("status")
+			.should("eq", 200);
+	});
+
+	it("rejects negative quantity", () => {
+		login();
+
+		cy.request({
+			method: "POST",
+			url: "http://localhost:5168/purchase",
+			failOnStatusCode: false,
+			body: {
+				productId: 1,
+				quantity: -5,
+				userId: 1,
+			},
+		})
+			.its("status")
+			.should("eq", 400);
+	});
+
+	it("rejects purchase greater than inventory", () => {
+		login();
+
+		cy.request({
+			method: "POST",
+			url: "http://localhost:5168/purchase",
+			failOnStatusCode: false,
+			body: {
+				productId: 1,
+				quantity: 9999,
+				userId: 1,
+			},
+		})
+			.its("status")
+			.should("eq", 400);
+	});
+
+	it("rejects purchase for invalid user", () => {
+		login();
+
+		cy.request({
+			method: "POST",
+			url: "http://localhost:5168/purchase",
+			failOnStatusCode: false,
+			body: {
+				productId: 1,
+				quantity: 1,
+				userId: 999, // fake user
+			},
+		})
+			.its("status")
+			.should("eq", 400);
+	});
 });

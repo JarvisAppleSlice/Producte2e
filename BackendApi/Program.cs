@@ -107,6 +107,14 @@ app.MapPost("/products", async (Product product, ProductDb db) =>
 
 app.MapPost("/purchase", async (ProductDb db, PurchaseRequest request) =>
 {
+    var user = await db.Users.FindAsync(request.UserId);
+
+    if (user == null)
+        return Results.BadRequest("Invalid user");
+
+    if (request.Quantity <= 0)
+        return Results.BadRequest("Quantity must be greater than 0");
+
     if (request.ProductId <= 0)
         return Results.BadRequest("Invalid request");
 
@@ -115,10 +123,19 @@ app.MapPost("/purchase", async (ProductDb db, PurchaseRequest request) =>
     if (product == null)
         return Results.BadRequest("Product not found");
 
-    if (product.InventoryCount <= 0)
+    if (product.InventoryCount <= request.Quantity)
         return Results.BadRequest("Out of stock");
 
-    product.InventoryCount -= 1;
+    product.InventoryCount -= request.Quantity;
+
+    var purchase = new Purchase
+    {
+        ProductId = product.Id,
+        UserId = user.Id,
+        Quantity = request.Quantity
+    };
+
+    db.Purchases.Add(purchase);
 
     await db.SaveChangesAsync();
 
@@ -127,7 +144,7 @@ app.MapPost("/purchase", async (ProductDb db, PurchaseRequest request) =>
         product.Id,
         product.Name,
         product.Price,
-        RemainingInventory = product.InventoryCount
+        RemainingInventory = product.InventoryCount,
     });
 });
 
