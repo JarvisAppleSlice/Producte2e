@@ -39,6 +39,11 @@ if (productsList) {
 
 		purchaseBtn.addEventListener("click", async () => {
 			try {
+				if (!user) {
+					alert("You must be logged in");
+					return;
+				}
+
 				const res = await fetch("http://localhost:5168/purchase", {
 					method: "POST",
 					headers: {
@@ -46,6 +51,8 @@ if (productsList) {
 					},
 					body: JSON.stringify({
 						productId: product.id,
+						quantity: 1,
+						userId: user.id,
 					}),
 				});
 
