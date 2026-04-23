@@ -14,6 +14,15 @@ describe("products", () => {
 			.should("have.length.greaterThan", 0);
 	});
 
+	function login() {
+		cy.request("POST", "http://localhost:5168/login", {
+			email: "test@test.com",
+			passwordHash: "password123",
+		}).then((res) => {
+			window.localStorage.setItem("user", JSON.stringify(res.body));
+		});
+	}
+
 	// =========================
 	// PRODUCTS - CREATE
 	// =========================
@@ -153,55 +162,26 @@ describe("products", () => {
 	// PURCHASE FLOW (MOCKED API)
 	// =========================
 	it("calls purchase API and updates UI", () => {
-		cy.intercept("POST", "http://localhost:5168/purchase", {
-			statusCode: 200,
-			body: {
-				name: "Laptop",
-				price: 999,
-				remainingInventory: 5,
-			},
-		}).as("purchase");
-
-		cy.window().then((win) => {
-			win.localStorage.setItem("user", JSON.stringify({ email: "test@test.com" }));
-		});
+		login();
 
 		cy.visit("http://localhost:5173/index.html");
 
-		cy.get("ul[name='products_list'] li")
-			.first()
-			.within(() => {
-				cy.contains("Purchase").click();
-			});
+		cy.get("ul[name='products_list'] li").first().as("firstProduct");
 
-		cy.wait("@purchase");
+		cy.get("@firstProduct").within(() => {
+			cy.contains("Purchase").click();
+		});
 
-		// ✅ wait for DOM update explicitly
-		cy.get("#receipt")
-			.should("exist")
-			.and(($el) => {
-				expect($el.text()).to.include("Purchase Successful");
-			});
+		cy.get("#receipt").should("exist").and("contain.text", "Purchase Successful");
 
-		cy.get("ul[name='products_list'] li").first().should("contain.text", "Inventory");
+		cy.get("@firstProduct").should("contain.text", "Inventory");
 	});
 
 	// =========================
 	// RECEIPT DISPLAY
 	// =========================
 	it("displays receipt after purchase", () => {
-		cy.intercept("POST", "http://localhost:5168/purchase", {
-			statusCode: 200,
-			body: {
-				name: "Laptop",
-				price: 999,
-				remainingInventory: 5,
-			},
-		}).as("purchase");
-
-		cy.window().then((win) => {
-			win.localStorage.setItem("user", JSON.stringify({ email: "test@test.com" }));
-		});
+		login();
 
 		cy.visit("http://localhost:5173/index.html");
 
@@ -211,43 +191,28 @@ describe("products", () => {
 				cy.contains("Purchase").click();
 			});
 
-		cy.wait("@purchase");
-
-		// ✅ FIX: don't require visibility (your div is empty height sometimes)
 		cy.get("#receipt")
 			.should("exist")
-			.and(($el) => {
-				expect($el.text().length).to.be.greaterThan(0);
-				expect($el.text()).to.include("Purchase Successful");
-			});
+			.and("contain.text", "Purchase Successful")
+			.and("contain.text", "Item:");
 	});
 
 	// =========================
 	// RECEIPT PERSISTENCE
 	// =========================
 	it("persists receipt after page reload", () => {
-		cy.intercept("POST", "http://localhost:5168/purchase", {
-			statusCode: 200,
-			body: {
-				name: "Laptop",
-				price: 999,
-				remainingInventory: 5,
-			},
-		}).as("purchase");
-
-		cy.window().then((win) => {
-			win.localStorage.setItem("user", JSON.stringify({ email: "test@test.com" }));
-		});
+		login();
 
 		cy.visit("http://localhost:5173/index.html");
 
-		cy.get("ul[name='products_list'] li").first().contains("Purchase").click();
-
-		cy.wait("@purchase");
+		cy.get("ul[name='products_list'] li")
+			.first()
+			.within(() => {
+				cy.contains("Purchase").click();
+			});
 
 		cy.reload();
 
-		// ✅ allow hydration delay
-		cy.get("#receipt").should("contain.text", "Item:").and("contain.text", "Laptop");
+		cy.get("#receipt").should("contain.text", "Item:").and("contain.text", "Price:");
 	});
 });

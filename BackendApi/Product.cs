@@ -10,5 +10,6 @@ public class Product
     public decimal Price { get; set; }
     [Required]
 
+    [ConcurrencyCheck]
     public int InventoryCount { get; set; }
 }
