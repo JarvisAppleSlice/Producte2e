@@ -28,14 +28,29 @@ if (productsList) {
 		const text = document.createElement("span");
 		text.innerText = `Name: ${name}, Price: $${Number(product.price).toFixed(2)}, Inventory: ${product.inventoryCount}`;
 
+		const qtyInput = document.createElement("input");
+		qtyInput.type = "number";
+		qtyInput.min = "1";
+		qtyInput.value = "1";
+
 		const purchaseBtn = document.createElement("button");
 		purchaseBtn.innerText = "Purchase";
 		purchaseBtn.dataset.id = product.id;
 
-		if (!user) {
-			purchaseBtn.disabled = true;
-			purchaseBtn.innerText = "Login to Purchase";
-		}
+		const updateButtonState = () => {
+			const qty = Number(qtyInput.value);
+
+			if (!user || qty <= 0 || qty > product.inventoryCount) {
+				purchaseBtn.disabled = true;
+			} else {
+				purchaseBtn.disabled = false;
+			}
+		};
+
+		qtyInput.addEventListener("input", updateButtonState);
+
+		// initial state
+		updateButtonState();
 
 		purchaseBtn.addEventListener("click", async () => {
 			try {
@@ -51,7 +66,7 @@ if (productsList) {
 					},
 					body: JSON.stringify({
 						productId: product.id,
-						quantity: 1,
+						quantity: Number(qtyInput.value),
 						userId: user.id,
 					}),
 				});
@@ -85,6 +100,8 @@ if (productsList) {
 				}
 
 				text.innerText = `Name: ${data.name}, Price: $${Number(data.price).toFixed(2)}, Inventory: ${data.remainingInventory}`;
+				product.inventoryCount = data.remainingInventory;
+				updateButtonState();
 
 				if (data.remainingInventory <= 0) {
 					purchaseBtn.disabled = true;
@@ -97,6 +114,8 @@ if (productsList) {
 		});
 
 		li.appendChild(text);
+		li.appendChild(document.createElement("br"));
+		li.appendChild(qtyInput);
 		li.appendChild(document.createElement("br"));
 		li.appendChild(purchaseBtn);
 
@@ -127,6 +146,27 @@ if (logoutBtn) {
 const form = document.querySelector('form[name="product_creation"]');
 
 if (form) {
+	const nameInput = form.querySelector('input[name="name"]');
+	const priceInput = form.querySelector('input[name="price"]');
+	const inventoryInput = form.querySelector('input[name="inventoryCount"]');
+	const submitBtn = form.querySelector('button[type="submit"]');
+
+	submitBtn.style.display = "none";
+
+	const validateForm = () => {
+		const name = nameInput.value.trim();
+		const price = Number(priceInput.value);
+		const inventory = Number(inventoryInput.value);
+
+		const isValid = name.length > 0 && price > 0 && inventory > 0;
+
+		submitBtn.style.display = isValid ? "block" : "none";
+	};
+
+	nameInput.addEventListener("input", validateForm);
+	priceInput.addEventListener("input", validateForm);
+	inventoryInput.addEventListener("input", validateForm);
+
 	form.addEventListener("submit", async (e) => {
 		e.preventDefault();
 

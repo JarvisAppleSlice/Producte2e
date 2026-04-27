@@ -8,8 +8,8 @@ public class Product
     public string? Name { get; set; }
     [Precision(15, 2), Required]
     public decimal Price { get; set; }
-    [Required]
 
+    [Required]
     [ConcurrencyCheck]
     public int InventoryCount { get; set; }
 }
