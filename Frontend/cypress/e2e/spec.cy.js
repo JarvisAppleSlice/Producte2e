@@ -159,7 +159,7 @@ describe("products", () => {
 	});
 
 	// =========================
-	// PURCHASE FLOW (MOCKED API)
+	// PURCHASE FLOW
 	// =========================
 	it("calls purchase API and updates UI", () => {
 		login();
