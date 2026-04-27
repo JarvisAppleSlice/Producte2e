@@ -147,14 +147,14 @@ describe("products", () => {
 			});
 	});
 
-	it("shows login message when not logged in", () => {
+	it("disables purchase when not logged in", () => {
 		cy.clearLocalStorage();
 		cy.visit("http://localhost:5173/index.html");
 
 		cy.get("ul[name='products_list'] li")
 			.first()
 			.within(() => {
-				cy.contains("Login to Purchase").should("be.visible");
+				cy.get("button").should("be.disabled");
 			});
 	});
 
@@ -221,7 +221,7 @@ describe("products", () => {
 
 		cy.request("POST", "http://localhost:5168/purchase", {
 			productId: 1,
-			quantity: 2,
+			quantity: 1,
 			userId: 1,
 		})
 			.its("status")
@@ -277,5 +277,43 @@ describe("products", () => {
 		})
 			.its("status")
 			.should("eq", 400);
+	});
+
+	it("disables purchase button when quantity is 0 or less", () => {
+		cy.visit("http://localhost:5173/", {
+			onBeforeLoad(win) {
+				win.localStorage.setItem(
+					"user",
+					JSON.stringify({ id: 1, email: "test@test.com" }),
+				);
+			},
+		});
+
+		cy.get("ul[name='products_list'] li")
+			.first()
+			.within(() => {
+				cy.get("input[type='number']").clear().type("0");
+
+				cy.contains("Purchase").should("be.disabled");
+			});
+	});
+
+	it("disables purchase button when quantity exceeds inventory", () => {
+		cy.visit("http://localhost:5173/", {
+			onBeforeLoad(win) {
+				win.localStorage.setItem(
+					"user",
+					JSON.stringify({ id: 1, email: "test@test.com" }),
+				);
+			},
+		});
+
+		cy.get("ul[name='products_list'] li")
+			.first()
+			.within(() => {
+				cy.get("input[type='number']").clear().type("999");
+
+				cy.contains("Purchase").should("be.disabled");
+			});
 	});
 });
