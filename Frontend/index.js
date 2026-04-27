@@ -8,6 +8,7 @@ if (receipt && savedReceipt) {
 	receipt.innerHTML = `
 		<h3>Last Purchase Receipt</h3>
 		<p>Item: ${savedReceipt.name}</p>
+		<p>Quantity: ${savedReceipt.quantity}</p>
 		<p>Price: $${Number(savedReceipt.price).toFixed(2)}</p>
 		<p>Remaining: ${savedReceipt.remaining}</p>
 		<p>Time: ${savedReceipt.time}</p>
@@ -78,8 +79,11 @@ if (productsList) {
 					return;
 				}
 
+				const quantity = Number(qtyInput.value);
+
 				const message = {
 					name: data.name,
+					quantity: quantity,
 					price: data.price,
 					remaining: data.remainingInventory,
 					time: new Date().toLocaleString(),
@@ -93,6 +97,7 @@ if (productsList) {
 					receiptEl.innerHTML = `
 						<h3>Purchase Successful</h3>
 						<p>Item: ${message.name}</p>
+						<p>Quantity: ${message.quantity}</p>
 						<p>Price: $${Number(message.price).toFixed(2)}</p>
 						<p>Remaining: ${message.remaining}</p>
 						<p>Time: ${message.time}</p>
