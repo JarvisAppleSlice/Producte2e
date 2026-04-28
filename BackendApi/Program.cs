@@ -42,7 +42,7 @@ using (var scope = app.Services.CreateScope())
             new Product { Id = 1, Name = "Laptop", Price = 999.99m, InventoryCount = 10, UserId = 1 },
             new Product { Id = 2, Name = "Mouse", Price = 25.50m, InventoryCount = 50, UserId = 1 },
             new Product { Id = 3, Name = "Keyboard", Price = 75.00m, InventoryCount = 30, UserId = 2 },
-            new Product { Id = 4, Name = "Headphones", Price = 50.25m, InventoryCount = 96, UserId = 2 }
+            new Product { Id = 4, Name = "EarBuds", Price = 50.25m, InventoryCount = 96, UserId = 2 }
         );
     }
 
