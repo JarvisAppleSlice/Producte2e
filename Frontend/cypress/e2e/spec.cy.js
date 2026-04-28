@@ -2,66 +2,96 @@ const { faker } = require("@faker-js/faker");
 
 describe("products", () => {
 	// =========================
-	// PRODUCTS - LISTING
+	// HELPERS
 	// =========================
-	it("lists products", () => {
-		cy.visit("http://localhost:5173/");
-
-		cy.get("h1").should("have.text", "Products:");
-		cy.get('ul[name="products_list"]')
-			.should("be.visible")
-			.find("li")
-			.should("have.length.greaterThan", 0);
-	});
-
-	function login() {
-		cy.request("POST", "http://localhost:5168/login", {
-			email: "test@test.com",
-			passwordHash: "password123",
-		}).then((res) => {
-			window.localStorage.setItem("user", JSON.stringify(res.body));
-		});
-	}
-
-	// =========================
-	// PRODUCTS - CREATE
-	// =========================
-	it("creates products", () => {
-		const name = faker.commerce.productName();
-		const price = faker.commerce.price({ min: 1, max: 300 });
-		const inventoryCount = faker.number.int({ min: 1, max: 1000 });
-
+	function loginUser1() {
 		cy.visit("http://localhost:5173/", {
 			onBeforeLoad(win) {
 				win.localStorage.setItem(
 					"user",
-					JSON.stringify({ id: 1, email: "test@test.com" }),
+					JSON.stringify({
+						id: 1,
+						email: "test1@test.com",
+					}),
 				);
 			},
 		});
+	}
 
-		cy.get('form[name="product_creation"]').should("be.visible");
+	function loginUser2() {
+		cy.visit("http://localhost:5173/", {
+			onBeforeLoad(win) {
+				win.localStorage.setItem(
+					"user",
+					JSON.stringify({
+						id: 2,
+						email: "test2@test.com",
+					}),
+				);
+			},
+		});
+	}
 
-		cy.get('form input[name="name"]').type(name);
-		cy.get('form input[name="price"]').type(price);
-		cy.get('form input[name="inventoryCount"]').type(inventoryCount);
+	// =========================
+	// PRODUCTS - LISTING
+	// =========================
+	it("lists all products", () => {
+		cy.visit("http://localhost:5173/");
 
-		cy.get('form button[type="submit"]').click();
+		cy.get("h1").should("have.text", "Products:");
 
-		cy.get('ul[name="products_list"] li:last')
+		cy.get('ul[name="products_list"]')
 			.should("be.visible")
-			.and("contain.text", name)
-			.and("contain.text", inventoryCount);
+			.find("li")
+			.should("have.length", 4);
 	});
 
 	// =========================
-	// REGISTER - SUCCESS
+	// LOGGED OUT UI
 	// =========================
-	it("registers a new user successfully", () => {
-		cy.visit("http://localhost:5173/registration.html");
+	it("hides purchase buttons while logged out", () => {
+		cy.clearLocalStorage();
 
+		cy.visit("http://localhost:5173/");
+
+		cy.contains("Purchase").should("not.exist");
+	});
+
+	it("hides edit buttons while logged out", () => {
+		cy.clearLocalStorage();
+
+		cy.visit("http://localhost:5173/");
+
+		cy.contains("Edit").should("not.exist");
+	});
+
+	// =========================
+	// CREATE BLOCKED LOGGED OUT
+	// =========================
+	it("tries to create product while logged out", () => {
+		cy.visit("http://localhost:5173/");
+
+		cy.get('input[name="name"]').type("Blocked Product");
+		cy.get('input[name="price"]').type("100");
+		cy.get('input[name="inventoryCount"]').type("10");
+
+		cy.on("window:alert", (txt) => {
+			expect(txt).to.contain("logged in");
+		});
+
+		cy.get('form[name="product_creation"]').submit();
+
+		cy.contains("Blocked Product").should("not.exist");
+	});
+
+	// =========================
+	// REGISTER SUCCESS
+	// =========================
+	it("registers a new user", () => {
 		const email = `test${Date.now()}@test.com`;
 
+		cy.visit("http://localhost:5173/registration.html");
+
 		cy.get("#email").type(email);
 		cy.get("#password").type("password123");
 
@@ -71,21 +101,14 @@ describe("products", () => {
 	});
 
 	// =========================
-	// REGISTER - DUPLICATE
+	// REGISTER DUPLICATE
 	// =========================
 	it("shows error for duplicate email", () => {
-		const email = `dup${Date.now()}@test.com`;
-
 		cy.visit("http://localhost:5173/registration.html");
-		cy.get("#email").type(email);
-		cy.get("#password").type("password123");
-		cy.get("#user_registration").submit();
 
-		cy.contains("Account created").should("be.visible");
-
-		cy.visit("http://localhost:5173/registration.html");
-		cy.get("#email").type(email);
+		cy.get("#email").type("test1@test.com");
 		cy.get("#password").type("password123");
+
 		cy.get("#user_registration").submit();
 
 		cy.contains("Email already exists").should("be.visible");
@@ -94,10 +117,21 @@ describe("products", () => {
 	// =========================
 	// LOGIN
 	// =========================
-	it("logs in user", () => {
+	it("logs in new user", () => {
+		const email = `new${Date.now()}@test.com`;
+
+		// register
+		cy.visit("http://localhost:5173/registration.html");
+
+		cy.get("#email").type(email);
+		cy.get("#password").type("password123");
+
+		cy.get("#user_registration").submit();
+
+		// login
 		cy.visit("http://localhost:5173/login.html");
 
-		cy.get("#email").type("test@test.com");
+		cy.get("#email").type(email);
 		cy.get("#password").type("password123");
 
 		cy.get("#login_form").submit();
@@ -105,85 +139,73 @@ describe("products", () => {
 		cy.url().should("include", "index.html");
 	});
 
-	// =========================
-	// LOGOUT
-	// =========================
-	it("shows logout when logged in", () => {
-		cy.visit("http://localhost:5173/", {
-			onBeforeLoad(win) {
-				win.localStorage.setItem(
-					"user",
-					JSON.stringify({ id: 1, email: "test@test.com" }),
-				);
-			},
-		});
+	it("hides login and register buttons when logged in", () => {
+		loginUser1();
 
+		cy.get("#login_btn").should("not.be.visible");
+		cy.get("#register_btn").should("not.be.visible");
 		cy.get("#logout_btn").should("be.visible");
 	});
 
 	// =========================
-	// BLOCK PRODUCT CREATION
+	// LOGOUT
 	// =========================
-	it("blocks product creation when not logged in", () => {
-		cy.visit("http://localhost:5173/");
+	it("logs out user", () => {
+		loginUser1();
 
-		cy.get('form[name="product_creation"]').submit();
+		cy.get("#logout_btn").click();
 
-		cy.on("window:alert", (txt) => {
-			expect(txt).to.contain("logged in");
+		cy.window().then((win) => {
+			expect(win.localStorage.getItem("user")).to.be.null;
 		});
 	});
 
-	// =========================
-	// PURCHASE BUTTON UI
-	// =========================
-	it("shows purchase button for products", () => {
-		cy.visit("http://localhost:5173/index.html");
+	it("shows login and register buttons when logged out", () => {
+		cy.clearLocalStorage();
 
-		cy.get("ul[name='products_list'] li")
-			.first()
-			.within(() => {
-				cy.contains("Purchase").should("be.visible");
-			});
+		cy.visit("http://localhost:5173/");
+
+		cy.get("#login_btn").should("be.visible");
+		cy.get("#register_btn").should("be.visible");
+		cy.get("#logout_btn").should("not.be.visible");
 	});
 
-	it("disables purchase when not logged in", () => {
-		cy.clearLocalStorage();
-		cy.visit("http://localhost:5173/index.html");
+	// =========================
+	// CREATE PRODUCT
+	// =========================
+	it("creates new product", () => {
+		loginUser1();
 
-		cy.get("ul[name='products_list'] li")
-			.first()
-			.within(() => {
-				cy.get("button").should("be.disabled");
-			});
+		const name = faker.commerce.productName();
+		const price = faker.number.int({ min: 1, max: 999 });
+		const inventory = faker.number.int({ min: 1, max: 100 });
+
+		cy.get('input[name="name"]').type(name);
+		cy.get('input[name="price"]').type(price.toString());
+		cy.get('input[name="inventoryCount"]').type(inventory.toString());
+
+		cy.get('button[type="submit"]').click();
+
+		cy.contains(name).should("be.visible");
 	});
 
 	// =========================
 	// PURCHASE FLOW
 	// =========================
 	it("calls purchase API and updates UI", () => {
-		login();
+		loginUser1();
 
-		cy.visit("http://localhost:5173/index.html");
+		cy.get("ul[name='products_list'] li").first().as("product");
 
-		cy.get("ul[name='products_list'] li").first().as("firstProduct");
-
-		cy.get("@firstProduct").within(() => {
+		cy.get("@product").within(() => {
 			cy.contains("Purchase").click();
 		});
 
-		cy.get("#receipt").should("exist").and("contain.text", "Purchase Successful");
-
-		cy.get("@firstProduct").should("contain.text", "Inventory");
+		cy.get("#receipt").should("contain.text", "Purchase Successful");
 	});
 
-	// =========================
-	// RECEIPT DISPLAY
-	// =========================
 	it("displays receipt after purchase", () => {
-		login();
-
-		cy.visit("http://localhost:5173/index.html");
+		loginUser1();
 
 		cy.get("ul[name='products_list'] li")
 			.first()
@@ -191,19 +213,11 @@ describe("products", () => {
 				cy.contains("Purchase").click();
 			});
 
-		cy.get("#receipt")
-			.should("exist")
-			.and("contain.text", "Purchase Successful")
-			.and("contain.text", "Item:");
+		cy.get("#receipt").should("contain.text", "Item:").and("contain.text", "Price:");
 	});
 
-	// =========================
-	// RECEIPT PERSISTENCE
-	// =========================
 	it("persists receipt after page reload", () => {
-		login();
-
-		cy.visit("http://localhost:5173/index.html");
+		loginUser1();
 
 		cy.get("ul[name='products_list'] li")
 			.first()
@@ -213,12 +227,13 @@ describe("products", () => {
 
 		cy.reload();
 
-		cy.get("#receipt").should("contain.text", "Item:").and("contain.text", "Price:");
+		cy.get("#receipt").should("contain.text", "Item:").and("contain.text", "Remaining:");
 	});
 
+	// =========================
+	// PURCHASE API VALIDATION
+	// =========================
 	it("allows valid purchase", () => {
-		login();
-
 		cy.request("POST", "http://localhost:5168/purchase", {
 			productId: 1,
 			quantity: 1,
@@ -229,15 +244,13 @@ describe("products", () => {
 	});
 
 	it("rejects negative quantity", () => {
-		login();
-
 		cy.request({
 			method: "POST",
 			url: "http://localhost:5168/purchase",
 			failOnStatusCode: false,
 			body: {
 				productId: 1,
-				quantity: -5,
+				quantity: -1,
 				userId: 1,
 			},
 		})
@@ -246,15 +259,13 @@ describe("products", () => {
 	});
 
 	it("rejects purchase greater than inventory", () => {
-		login();
-
 		cy.request({
 			method: "POST",
 			url: "http://localhost:5168/purchase",
 			failOnStatusCode: false,
 			body: {
 				productId: 1,
-				quantity: 9999,
+				quantity: 99999,
 				userId: 1,
 			},
 		})
@@ -262,9 +273,7 @@ describe("products", () => {
 			.should("eq", 400);
 	});
 
-	it("rejects purchase for invalid user", () => {
-		login();
-
+	it("rejects invalid user purchase", () => {
 		cy.request({
 			method: "POST",
 			url: "http://localhost:5168/purchase",
@@ -272,22 +281,18 @@ describe("products", () => {
 			body: {
 				productId: 1,
 				quantity: 1,
-				userId: 999, // fake user
+				userId: 999,
 			},
 		})
 			.its("status")
 			.should("eq", 400);
 	});
 
-	it("disables purchase button when quantity is 0 or less", () => {
-		cy.visit("http://localhost:5173/", {
-			onBeforeLoad(win) {
-				win.localStorage.setItem(
-					"user",
-					JSON.stringify({ id: 1, email: "test@test.com" }),
-				);
-			},
-		});
+	// =========================
+	// PURCHASE BUTTON VALIDATION
+	// =========================
+	it("disables purchase button when quantity <= 0", () => {
+		loginUser1();
 
 		cy.get("ul[name='products_list'] li")
 			.first()
@@ -299,21 +304,90 @@ describe("products", () => {
 	});
 
 	it("disables purchase button when quantity exceeds inventory", () => {
-		cy.visit("http://localhost:5173/", {
-			onBeforeLoad(win) {
-				win.localStorage.setItem(
-					"user",
-					JSON.stringify({ id: 1, email: "test@test.com" }),
-				);
-			},
-		});
+		loginUser1();
 
 		cy.get("ul[name='products_list'] li")
 			.first()
 			.within(() => {
-				cy.get("input[type='number']").clear().type("999");
+				cy.get("input[type='number']").clear().type("99999");
 
 				cy.contains("Purchase").should("be.disabled");
 			});
+	});
+
+	// =========================
+	// EDIT AUTHORIZATION
+	// =========================
+	it("shows edit button for product owner", () => {
+		loginUser1();
+
+		cy.contains("Laptop")
+			.parent()
+			.within(() => {
+				cy.contains("Edit").should("be.visible");
+			});
+	});
+
+	it("hides edit button for non-owner", () => {
+		loginUser1();
+
+		cy.contains("Keyboard")
+			.parent()
+			.within(() => {
+				cy.contains("Edit").should("not.exist");
+			});
+	});
+
+	// =========================
+	// EDIT PRODUCT
+	// =========================
+	it("allows owner to edit product", () => {
+		loginUser1();
+
+		const updatedName = faker.commerce.productName();
+		const updatedPrice = faker.number.int({ min: 100, max: 999 });
+		const updatedInventory = faker.number.int({ min: 10, max: 500 });
+
+		cy.window().then((win) => {
+			cy.stub(win, "prompt")
+				.onFirstCall()
+				.returns(updatedName)
+				.onSecondCall()
+				.returns(updatedPrice.toString())
+				.onThirdCall()
+				.returns(updatedInventory.toString());
+		});
+
+		cy.contains("Laptop")
+			.parent()
+			.within(() => {
+				cy.contains("Edit").click();
+			});
+
+		cy.contains(updatedName)
+			.should("be.visible")
+			.and("contain.text", updatedPrice)
+			.and("contain.text", updatedInventory);
+	});
+
+	// =========================
+	// FORBIDDEN EDIT
+	// =========================
+	it("rejects editing another user's product", () => {
+		loginUser1();
+
+		cy.request({
+			method: "PUT",
+			url: "http://localhost:5168/products/3",
+			failOnStatusCode: false,
+			body: {
+				name: "Hacked",
+				price: 1,
+				inventoryCount: 1,
+				userId: 1,
+			},
+		})
+			.its("status")
+			.should("eq", 403);
 	});
 });
