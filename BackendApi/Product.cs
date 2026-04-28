@@ -12,6 +12,4 @@ public class Product
     [Required]
     [ConcurrencyCheck]
     public int InventoryCount { get; set; }
-
-    public int UserId { get; set; }
 }

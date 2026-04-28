@@ -48,10 +48,11 @@ using (var scope = app.Services.CreateScope())
 
     if (!db.Users.Any())
     {
-        db.Users.AddRange(
-            new User { Id = 1, Email = "test1@test.com", PasswordHash = HashPassword("password123") },
-             new User { Id = 2, Email = "test2@test.com", PasswordHash = HashPassword("password456") }
-        );
+        db.Users.Add(new User
+        {
+            Email = "test@test.com",
+            PasswordHash = HashPassword("password123")
+        });
     }
 
     db.SaveChanges();
@@ -99,9 +100,6 @@ app.MapGet("/products", async (ProductDb db) =>
 
 app.MapPost("/products", async (Product product, ProductDb db) =>
 {
-    if (product.UserId <= 0)
-        return Results.BadRequest("Invalid user");
-
     db.Products.Add(product);
     await db.SaveChangesAsync();
 
@@ -126,7 +124,7 @@ app.MapPost("/purchase", async (ProductDb db, PurchaseRequest request) =>
     if (product == null)
         return Results.BadRequest("Product not found");
 
-    if (product.InventoryCount < request.Quantity)
+    if (product.InventoryCount <= request.Quantity)
         return Results.BadRequest("Out of stock");
 
     product.InventoryCount -= request.Quantity;
@@ -150,29 +148,6 @@ app.MapPost("/purchase", async (ProductDb db, PurchaseRequest request) =>
         RemainingInventory = product.InventoryCount,
     });
 });
-
-app.MapPut("/products/{id}", async (int id, ProductDb db, Product updated) =>
-{
-    var product = await db.Products.FindAsync(id);
-
-    if (product == null)
-        return Results.NotFound();
-
-    if (updated.UserId <= 0)
-        return Results.BadRequest("Not logged in");
-
-    if (product.UserId != updated.UserId)
-        return Results.StatusCode(403);
-
-    product.Name = updated.Name;
-    product.Price = updated.Price;
-    product.InventoryCount = updated.InventoryCount;
-
-    await db.SaveChangesAsync();
-
-    return Results.Ok(product);
-});
-
 
 app.UseCors(MyAllowSpecificOrigins);
 app.Run();
