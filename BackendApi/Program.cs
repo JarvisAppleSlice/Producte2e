@@ -110,7 +110,7 @@ app.MapPost("/products", async (Product product, ProductDb db) =>
 
 app.MapPost("/purchase", async (ProductDb db, PurchaseRequest request) =>
 {
-    var user = await db.Users.FindAsync(request.UserId);
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
 
     if (user == null)
         return Results.BadRequest("Invalid user");
@@ -171,6 +171,30 @@ app.MapPut("/products/{id}", async (int id, ProductDb db, Product updated) =>
     await db.SaveChangesAsync();
 
     return Results.Ok(product);
+});
+
+app.MapDelete("/products/{id}", async (int id, ProductDb db, HttpContext http) =>
+{
+    var request = await http.Request.ReadFromJsonAsync<DeleteRequest>();
+
+    if (request == null)
+        return Results.BadRequest("Invalid request");
+
+    var product = await db.Products.FindAsync(id);
+
+    if (product == null)
+        return Results.NotFound();
+
+    if (request.UserId <= 0)
+        return Results.BadRequest("Not logged in");
+
+    if (product.UserId != request.UserId)
+        return Results.StatusCode(403);
+
+    db.Products.Remove(product);
+    await db.SaveChangesAsync();
+
+    return Results.Ok("Deleted");
 });
 
 
