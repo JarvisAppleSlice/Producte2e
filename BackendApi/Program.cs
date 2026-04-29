@@ -135,7 +135,8 @@ app.MapPost("/purchase", async (ProductDb db, PurchaseRequest request) =>
     {
         ProductId = product.Id,
         UserId = user.Id,
-        Quantity = request.Quantity
+        Quantity = request.Quantity,
+        CreatedAt = DateTime.UtcNow
     };
 
     db.Purchases.Add(purchase);
@@ -191,10 +192,72 @@ app.MapDelete("/products/{id}", async (int id, ProductDb db, HttpContext http) =
     if (product.UserId != request.UserId)
         return Results.StatusCode(403);
 
+
+    var purchases = db.Purchases.Where(p => p.ProductId == id);
+    db.Purchases.RemoveRange(purchases);
+
     db.Products.Remove(product);
+
     await db.SaveChangesAsync();
 
     return Results.Ok("Deleted");
+});
+
+app.MapGet("/purchases/{userId}", async (int userId, ProductDb db) =>
+{
+    var purchases = await db.Purchases
+        .Where(p => p.UserId == userId)
+        .Join(
+            db.Products,
+            purchase => purchase.ProductId,
+            product => product.Id,
+            (purchase, product) => new
+            {
+                PurchaseId = purchase.Id,
+                ProductName = product.Name,
+                Quantity = purchase.Quantity,
+                PricePerItem = product.Price,
+                Total = product.Price * purchase.Quantity,
+                SellerUserId = product.UserId,
+                CreatedAt = purchase.CreatedAt
+            }
+        )
+        .ToListAsync();
+
+    return Results.Ok(purchases);
+});
+
+app.MapGet("/sales/{userId}", async (int userId, ProductDb db) =>
+{
+    var sales = await db.Purchases
+        .Join(
+            db.Products,
+            purchase => purchase.ProductId,
+            product => product.Id,
+            (purchase, product) => new
+            {
+                Purchase = purchase,
+                Product = product
+            }
+        )
+        .Where(x => x.Product.UserId == userId)
+        .Join(
+            db.Users,
+            x => x.Purchase.UserId,
+            user => user.Id,
+            (x, buyer) => new
+            {
+                ProductName = x.Product.Name,
+                Quantity = x.Purchase.Quantity,
+                BuyerEmail = buyer.Email,
+                PricePerItem = x.Product.Price,
+                Total = x.Product.Price * x.Purchase.Quantity,
+                CreatedAt = x.Purchase.CreatedAt
+            }
+        )
+        .ToListAsync();
+
+    return Results.Ok(sales);
 });
 
 
