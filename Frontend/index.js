@@ -22,11 +22,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 	// PRODUCTS LIST
 	// =========================
 	if (productsList) {
-		const res = await fetch("http://localhost:5168/products");
-		const data = await res.json();
+		let data = [];
+		try {
+			const res = await fetch("http://localhost:5168/products");
+			data = await res.json();
+		} catch (err) {
+			console.error("Failed to load products", err);
+			data = [];
+		}
 
 		data.forEach((product) => {
 			const li = document.createElement("li");
+			li.dataset.productId = product.id;
 
 			const text = document.createElement("span");
 			text.innerText = `Name: ${product.name}, Price: $${Number(product.price).toFixed(2)}, Inventory: ${product.inventoryCount}`;
@@ -38,13 +45,45 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 			let purchaseBtn = null;
 
-			if (user) {
+			if (user && product.userId !== user.id) {
 				purchaseBtn = document.createElement("button");
 				purchaseBtn.innerText = "Purchase";
 				purchaseBtn.dataset.id = product.id;
 			}
 
 			let editBtn = null;
+
+			let deleteBtn = null;
+
+			if (user && product.userId === user.id) {
+				deleteBtn = document.createElement("button");
+				deleteBtn.innerText = "Delete";
+				deleteBtn.dataset.id = product.id;
+
+				deleteBtn.addEventListener("click", async () => {
+					try {
+						const res = await fetch(`http://localhost:5168/products/${product.id}`, {
+							method: "DELETE",
+							headers: {
+								"Content-Type": "application/json",
+							},
+							body: JSON.stringify({
+								userId: user.id,
+							}),
+						});
+
+						if (!res.ok) {
+							alert("Delete failed");
+							return;
+						}
+
+						li.remove();
+					} catch (err) {
+						console.error(err);
+						alert("Delete failed");
+					}
+				});
+			}
 
 			if (user && product.userId === user.id) {
 				editBtn = document.createElement("button");
@@ -122,7 +161,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 							}),
 						});
 
-						const data = await res.json();
+						let data = null;
+						try {
+							data = await res.json();
+						} catch {
+							data = null;
+						}
 
 						if (!res.ok) {
 							alert(data);
@@ -169,7 +213,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 			li.appendChild(text);
 
-			if (user) {
+			if (purchaseBtn) {
 				li.appendChild(document.createElement("br"));
 				li.appendChild(qtyInput);
 				li.appendChild(document.createElement("br"));
@@ -177,7 +221,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 			}
 
 			if (editBtn) {
+				li.appendChild(document.createTextNode(" "));
 				li.appendChild(editBtn);
+			}
+
+			if (deleteBtn) {
+				li.appendChild(document.createTextNode(" "));
+				li.appendChild(deleteBtn);
 			}
 
 			productsList.appendChild(li);
@@ -288,6 +338,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 			if (list) {
 				const li = document.createElement("li");
+				li.dataset.productId = created.id;
 
 				const text = document.createElement("span");
 				text.innerText = `Name: ${created.name}, Price: $${Number(created.price).toFixed(2)}, Inventory: ${created.inventoryCount}`;
