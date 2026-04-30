@@ -21,8 +21,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 			<p>Remaining: ${savedReceipt.remaining}</p>
 			<p>Time: ${savedReceipt.time}</p>
 		`;
-
-		localStorage.removeItem("receipt");
 	}
 
 	// =========================
@@ -92,7 +90,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			data = [];
 		}
 
-		if (!data || data.length === 0) return;
+		if (!data) data = [];
 
 		data.forEach((product) => {
 			const li = document.createElement("li");
@@ -140,10 +138,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 							return;
 						}
 
-						li.remove();
-						await new Promise((res) => setTimeout(res, 0));
+						localStorage.removeItem("receipt");
 
-						location.reload();
+						setTimeout(() => {
+							location.reload();
+						}, 0);
 					} catch (err) {
 						console.error(err);
 						alert("Delete failed");
@@ -487,15 +486,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 					deleteBtn.innerText = "Delete";
 
 					deleteBtn.addEventListener("click", async () => {
-						const res = await fetch(`http://localhost:5168/products/${created.id}`, {
-							method: "DELETE",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ userId: user.id }),
-						});
+						try {
+							const res = await fetch(`http://localhost:5168/products/${created.id}`, {
+								method: "DELETE",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ userId: user.id }),
+							});
 
-						if (res.ok) {
-							li.remove();
-						} else {
+							if (!res.ok) {
+								alert("Delete failed");
+								return;
+							}
+
+							location.reload();
+						} catch (err) {
+							console.error(err);
 							alert("Delete failed");
 						}
 					});

@@ -1,9 +1,8 @@
 const { faker } = require("@faker-js/faker");
 
 describe("products", () => {
-	// =========================
 	// HELPERS
-	// =========================
+
 	function loginUser1() {
 		cy.visit("http://localhost:5173/", {
 			onBeforeLoad(win) {
@@ -32,9 +31,8 @@ describe("products", () => {
 		});
 	}
 
-	// =========================
 	// PRODUCTS - LISTING (BASE STATE)
-	// =========================
+
 	it("lists all products", () => {
 		cy.visit("http://localhost:5173/");
 
@@ -46,9 +44,8 @@ describe("products", () => {
 			.should("have.length", 4);
 	});
 
-	// =========================
 	// LOGGED OUT UI
-	// =========================
+
 	it("hides purchase buttons while logged out", () => {
 		cy.clearLocalStorage();
 		cy.visit("http://localhost:5173/");
@@ -77,9 +74,8 @@ describe("products", () => {
 		cy.contains("Blocked Product").should("not.exist");
 	});
 
-	// =========================
 	// AUTH FLOW
-	// =========================
+
 	it("registers a new user", () => {
 		const email = `test${Date.now()}@test.com`;
 
@@ -152,9 +148,8 @@ describe("products", () => {
 		cy.get("#logout_btn").should("not.be.visible");
 	});
 
-	// =========================
 	// PRODUCT CREATION
-	// =========================
+
 	it("creates new product", () => {
 		loginUser1();
 
@@ -171,9 +166,8 @@ describe("products", () => {
 		cy.contains(name).should("be.visible");
 	});
 
-	// =========================
 	// PRODUCT UI (OWNER / NON-OWNER)
-	// =========================
+
 	it("shows edit button for product owner", () => {
 		loginUser1();
 
@@ -206,9 +200,8 @@ describe("products", () => {
 		});
 	});
 
-	// =========================
 	// PURCHASE FLOW (UI)
-	// =========================
+
 	it("calls purchase API and updates UI", () => {
 		loginUser1();
 
@@ -246,9 +239,8 @@ describe("products", () => {
 		cy.get("#receipt").should("contain.text", "Item:").and("contain.text", "Remaining:");
 	});
 
-	// =========================
 	// PURCHASE BUTTON VALIDATION
-	// =========================
+
 	it("disables purchase button when quantity <= 0", () => {
 		loginUser1();
 
@@ -269,9 +261,8 @@ describe("products", () => {
 		});
 	});
 
-	// =========================
 	// EDIT PRODUCT
-	// =========================
+
 	it("allows owner to edit product", () => {
 		loginUser1();
 
@@ -294,9 +285,8 @@ describe("products", () => {
 		cy.get("body").should("contain.text", updatedName);
 	});
 
-	// =========================
 	// PURCHASE API VALIDATION (BACKEND)
-	// =========================
+
 	it("allows valid purchase", () => {
 		cy.visit("http://localhost:5173/");
 
@@ -347,9 +337,7 @@ describe("products", () => {
 			.should("eq", 400);
 	});
 
-	// =========================
 	// SALES / PURCHASE SECTION
-	// =========================
 
 	it("shows purchases section for logged in user", () => {
 		loginUser1();
@@ -372,9 +360,7 @@ describe("products", () => {
 		cy.get("#purchases_section").should("not.be.visible");
 	});
 
-	// =========================
 	// MULTI USER FLOW
-	// =========================
 
 	it("shows purchased products for buyer", () => {
 		loginUser2();
@@ -424,9 +410,8 @@ describe("products", () => {
 		});
 	});
 
-	// =========================
 	// DELETE PRODUCT
-	// =========================
+
 	it("allows owner to delete product", () => {
 		loginUser1();
 
@@ -451,85 +436,73 @@ describe("products", () => {
 	});
 
 	it("deletes product and removes it from UI", () => {
+		let productName;
+
 		loginUser1();
 
-		cy.get('ul[name="products_list"]').find('li[data-product-id="1"]').should("exist");
+		// create product owned by user 1
+		cy.get('input[name="name"]').type((productName = faker.commerce.productName()));
+		cy.get('input[name="price"]').type("50");
+		cy.get('input[name="inventoryCount"]').type("10");
+		cy.get('form[name="product_creation"]').submit();
 
-		cy.get('li[data-product-id="1"]').within(() => {
-			cy.contains("Delete").click();
-		});
+		// ensure it exists
+		cy.contains(productName).should("exist");
 
-		cy.get('li[data-product-id="1"]').should("not.exist");
+		// delete it
+		cy.contains(productName)
+			.parents("li")
+			.within(() => {
+				cy.contains("Delete").click();
+			});
+
+		cy.get("li").should("not.contain", productName);
 	});
 
-	it("removes related purchases when product is deleted", () => {
-		loginUser2();
+	it("removes related purchases and sales when product is deleted", () => {
+		let productName = "Headphones";
 
-		// buy product first
-		cy.get('li[data-product-id="2"]').within(() => {
-			cy.contains("Purchase").click();
-		});
+		// BUYER (User 1 purchases User 2 product)
+
+		loginUser1();
+
+		cy.get('li[data-product-id="4"]')
+			.should("contain.text", "Headphones")
+			.within(() => {
+				cy.contains("Purchase").click();
+			});
 
 		cy.wait(300);
 
-		// switch to owner and delete product
+		// SELLER (User 2 deletes product)
+
 		cy.clearLocalStorage();
-		loginUser1();
-
-		cy.get('li[data-product-id="2"]').within(() => {
-			cy.contains("Delete").click();
-		});
-
-		cy.reload();
-
-		cy.get("#purchases_list").should("not.contain", "Mouse");
-	});
-
-	it("removes related sales when product is deleted", () => {
 		loginUser2();
 
-		// trigger sale
-		cy.get('li[data-product-id="3"]').within(() => {
-			cy.contains("Purchase").click();
-		});
+		cy.get('li[data-product-id="4"]')
+			.should("exist")
+			.within(() => {
+				cy.contains("Delete").click();
+			});
 
 		cy.wait(300);
 
-		// switch to seller
+		// VERIFY PURCHASES (BUYER VIEW)
+
 		cy.clearLocalStorage();
 		loginUser1();
 
-		cy.get('li[data-product-id="3"]').within(() => {
-			cy.contains("Delete").click();
-		});
-
 		cy.reload();
 
-		cy.get("#sales_list").should("not.contain", "Keyboard");
-	});
+		cy.get("#purchases_list").should("not.contain", productName);
 
-	it("fully cleans up product, purchases, and sales after deletion", () => {
+		// VERIFY SALES (SELLER VIEW)
+
+		cy.clearLocalStorage();
 		loginUser2();
 
-		// buy product
-		cy.get('li[data-product-id="4"]').within(() => {
-			cy.contains("Purchase").click();
-		});
-
-		cy.wait(300);
-
-		// delete product as owner
-		cy.clearLocalStorage();
-		loginUser1();
-
-		cy.get('li[data-product-id="4"]').within(() => {
-			cy.contains("Delete").click();
-		});
-
 		cy.reload();
 
-		cy.get("#purchases_list").should("not.contain", "Headphones");
-		cy.get("#sales_list").should("not.contain", "Headphones");
-		cy.get('li[data-product-id="4"]').should("not.exist");
+		cy.get("#sales_list").should("not.contain", productName);
 	});
 });

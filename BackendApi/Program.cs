@@ -193,7 +193,10 @@ app.MapDelete("/products/{id}", async (int id, ProductDb db, HttpContext http) =
         return Results.StatusCode(403);
 
 
-    var purchases = db.Purchases.Where(p => p.ProductId == id);
+    var purchases = await db.Purchases
+     .Where(p => p.ProductId == id)
+     .ToListAsync();
+
     db.Purchases.RemoveRange(purchases);
 
     db.Products.Remove(product);
@@ -207,6 +210,7 @@ app.MapGet("/purchases/{userId}", async (int userId, ProductDb db) =>
 {
     var purchases = await db.Purchases
         .Where(p => p.UserId == userId)
+        .Where(p => db.Products.Any(prod => prod.Id == p.ProductId))
         .Join(
             db.Products,
             purchase => purchase.ProductId,
