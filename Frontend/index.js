@@ -5,17 +5,76 @@ document.addEventListener("DOMContentLoaded", async () => {
 	const receipt = document.getElementById("receipt");
 	const savedReceipt = JSON.parse(localStorage.getItem("receipt") || "null");
 
+	const purchasesSection = document.getElementById("purchases_section");
+	const purchasesList = document.getElementById("purchases_list");
+
+	const salesSection = document.getElementById("sales_section");
+	const salesList = document.getElementById("sales_list");
+
 	if (receipt && savedReceipt) {
 		receipt.innerHTML = `
 			<h3>Last Purchase Receipt</h3>
 			<p>Item: ${savedReceipt.name}</p>
 			<p>Quantity: ${savedReceipt.quantity}</p>
-			<p>Price: $${Number(savedReceipt.price).toFixed(2)}</p>
+			<p>Price Per Item: $${savedReceipt.pricePerItem.toFixed(2)}</p>
+			<p>Total Spent: $${savedReceipt.totalSpent.toFixed(2)}</p>
 			<p>Remaining: ${savedReceipt.remaining}</p>
 			<p>Time: ${savedReceipt.time}</p>
 		`;
+	}
 
-		localStorage.removeItem("receipt");
+	// =========================
+	// PURCHASE HISTORY
+	// =========================
+	if (user && purchasesSection && purchasesList) {
+		purchasesSection.style.display = "block";
+
+		try {
+			const res = await fetch(`http://localhost:5168/purchases/${user.id}`);
+
+			const purchases = await res.json();
+
+			purchases.forEach((purchase) => {
+				const li = document.createElement("li");
+
+				li.innerText =
+					`Product: ${purchase.productName}, ` +
+					`Quantity: ${purchase.quantity}, ` +
+					`Total: $${Number(purchase.total).toFixed(2)}, ` +
+					`Date: ${new Date(purchase.createdAt).toLocaleString()}`;
+
+				purchasesList.appendChild(li);
+			});
+		} catch (err) {
+			console.error("Failed to load purchases", err);
+		}
+	}
+	// =========================
+	// SALES HISTORY
+	// =========================
+	if (user && salesSection && salesList) {
+		salesSection.style.display = "block";
+
+		try {
+			const res = await fetch(`http://localhost:5168/sales/${user.id}`);
+
+			const sales = await res.json();
+
+			sales.forEach((sale) => {
+				const li = document.createElement("li");
+
+				li.innerText =
+					`Product: ${sale.productName}, ` +
+					`Buyer: ${sale.buyerEmail}, ` +
+					`Quantity: ${sale.quantity}, ` +
+					`Total: $${Number(sale.total).toFixed(2)}, ` +
+					`Date: ${new Date(sale.createdAt).toLocaleString()}`;
+
+				salesList.appendChild(li);
+			});
+		} catch (err) {
+			console.error("Failed to load sales", err);
+		}
 	}
 
 	// =========================
@@ -30,6 +89,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 			console.error("Failed to load products", err);
 			data = [];
 		}
+
+		if (!data) data = [];
 
 		data.forEach((product) => {
 			const li = document.createElement("li");
@@ -77,7 +138,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 							return;
 						}
 
-						li.remove();
+						localStorage.removeItem("receipt");
+
+						setTimeout(() => {
+							location.reload();
+						}, 0);
 					} catch (err) {
 						console.error(err);
 						alert("Delete failed");
@@ -173,15 +238,42 @@ document.addEventListener("DOMContentLoaded", async () => {
 							return;
 						}
 
+						const quantity = Number(qtyInput.value);
+						const totalSpent = Number(data.price) * quantity;
+
 						const message = {
 							name: data.name,
-							quantity: Number(qtyInput.value),
-							price: data.price,
+							quantity: quantity,
+							pricePerItem: Number(data.price),
+							totalSpent: totalSpent,
 							remaining: data.remainingInventory,
 							time: new Date().toLocaleString(),
 						};
 
 						localStorage.setItem("receipt", JSON.stringify(message));
+
+						if (user && purchasesSection && purchasesList) {
+							purchasesList.innerHTML = "";
+
+							try {
+								const res = await fetch(`http://localhost:5168/purchases/${user.id}`);
+								const purchases = await res.json();
+
+								purchases.forEach((purchase) => {
+									const li = document.createElement("li");
+
+									li.innerText =
+										`Product: ${purchase.productName}, ` +
+										`Quantity: ${purchase.quantity}, ` +
+										`Total: $${Number(purchase.total).toFixed(2)}, ` +
+										`Date: ${new Date(purchase.createdAt).toLocaleString()}`;
+
+									purchasesList.appendChild(li);
+								});
+							} catch (err) {
+								console.error("Failed to load purchases", err);
+							}
+						}
 
 						const receiptEl = document.getElementById("receipt");
 
@@ -190,7 +282,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 							<h3>Purchase Successful</h3>
 							<p>Item: ${message.name}</p>
 							<p>Quantity: ${message.quantity}</p>
-							<p>Price: $${Number(message.price).toFixed(2)}</p>
+							<p>Price Per Item: $${message.pricePerItem.toFixed(2)}</p>
+							<p>Total Spent: $${message.totalSpent.toFixed(2)}</p>
 							<p>Remaining: ${message.remaining}</p>
 							<p>Time: ${message.time}</p>
 						`;
@@ -252,6 +345,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 			logoutBtn.addEventListener("click", () => {
 				localStorage.removeItem("user");
+				localStorage.removeItem("receipt");
+
+				const receiptEl = document.getElementById("receipt");
+				if (receiptEl) receiptEl.innerHTML = "";
+
 				location.reload();
 			});
 		}
@@ -343,13 +441,97 @@ document.addEventListener("DOMContentLoaded", async () => {
 				const text = document.createElement("span");
 				text.innerText = `Name: ${created.name}, Price: $${Number(created.price).toFixed(2)}, Inventory: ${created.inventoryCount}`;
 
-				const button = document.createElement("button");
-				button.innerText = "Purchase";
-				button.dataset.id = created.id;
+				const qtyInput = document.createElement("input");
+				qtyInput.type = "number";
+				qtyInput.min = "1";
+				qtyInput.value = "1";
 
+				let purchaseBtn = null;
+				let editBtn = null;
+				let deleteBtn = null;
+
+				// OWNER = edit/delete
+				if (user && created.userId === user.id) {
+					editBtn = document.createElement("button");
+					editBtn.innerText = "Edit";
+
+					editBtn.addEventListener("click", async () => {
+						const newName = prompt("New name:", created.name);
+						const newPrice = prompt("New price:", created.price);
+						const newInventory = prompt("New inventory:", created.inventoryCount);
+
+						if (!newName || !newPrice || !newInventory) return;
+
+						const res = await fetch(`http://localhost:5168/products/${created.id}`, {
+							method: "PUT",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								name: newName,
+								price: Number(newPrice),
+								inventoryCount: Number(newInventory),
+								userId: user.id,
+							}),
+						});
+
+						const updated = await res.json();
+
+						if (res.ok) {
+							text.innerText = `Name: ${updated.name}, Price: $${Number(updated.price).toFixed(2)}, Inventory: ${updated.inventoryCount}`;
+						} else {
+							alert("Update failed");
+						}
+					});
+
+					deleteBtn = document.createElement("button");
+					deleteBtn.innerText = "Delete";
+
+					deleteBtn.addEventListener("click", async () => {
+						try {
+							const res = await fetch(`http://localhost:5168/products/${created.id}`, {
+								method: "DELETE",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ userId: user.id }),
+							});
+
+							if (!res.ok) {
+								alert("Delete failed");
+								return;
+							}
+
+							location.reload();
+						} catch (err) {
+							console.error(err);
+							alert("Delete failed");
+						}
+					});
+				}
+
+				// NON-OWNER = purchase
+				else if (user) {
+					purchaseBtn = document.createElement("button");
+					purchaseBtn.innerText = "Purchase";
+					purchaseBtn.dataset.id = created.id;
+				}
+
+				// BUILD DOM IN SAME ORDER AS MAIN LIST
 				li.appendChild(text);
-				li.appendChild(document.createElement("br"));
-				li.appendChild(button);
+
+				if (purchaseBtn) {
+					li.appendChild(document.createElement("br"));
+					li.appendChild(qtyInput);
+					li.appendChild(document.createElement("br"));
+					li.appendChild(purchaseBtn);
+				}
+
+				if (editBtn) {
+					li.appendChild(document.createTextNode(" "));
+					li.appendChild(editBtn);
+				}
+
+				if (deleteBtn) {
+					li.appendChild(document.createTextNode(" "));
+					li.appendChild(deleteBtn);
+				}
 
 				list.appendChild(li);
 			}
