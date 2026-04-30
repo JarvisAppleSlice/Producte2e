@@ -285,6 +285,30 @@ describe("products", () => {
 		cy.get("body").should("contain.text", updatedName);
 	});
 
+	it("shows success message after editing product", () => {
+		loginUser1();
+
+		const updatedName = faker.commerce.productName();
+
+		cy.window().then((win) => {
+			cy.stub(win, "prompt")
+				.onFirstCall()
+				.returns(updatedName)
+				.onSecondCall()
+				.returns("100")
+				.onThirdCall()
+				.returns("10");
+		});
+
+		cy.get('li[data-product-id="1"]').within(() => {
+			cy.contains("Edit").click();
+		});
+
+		cy.get('[data-testid="edit-success"]')
+			.should("be.visible")
+			.and("contain.text", "Product updated successfully");
+	});
+
 	// PURCHASE API VALIDATION (BACKEND)
 
 	it("allows valid purchase", () => {

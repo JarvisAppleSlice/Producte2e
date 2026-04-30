@@ -184,6 +184,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 						}
 
 						text.innerText = `Name: ${updated.name}, Price: $${Number(updated.price).toFixed(2)}, Inventory: ${updated.inventoryCount}`;
+
+						const msg = document.createElement("div");
+						msg.className = "success-message";
+						msg.dataset.testid = "edit-success";
+						msg.innerText = "Product updated successfully";
+						li.appendChild(msg);
+
+						setTimeout(() => msg.remove(), 2000);
 					} catch (err) {
 						console.error(err);
 						alert("Update failed");
